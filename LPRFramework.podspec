@@ -16,9 +16,16 @@ TODO: Add long description of the pod here.
   s.ios.deployment_target = '12.0'
   s.requires_arc = true
   s.static_framework = true
+  
+  s.pod_target_xcconfig = {
+    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++14',
+    'CLANG_CXX_LIBRARY' => 'libc++'
+  }
 
   s.source_files = 'Sources/Classes/**/*'
   s.resources = 'Sources/Assets/*'
+  s.frameworks = 'CoreML'
+  s.libraries = 'c++'
   s.vendored_frameworks = 'Frameworks/*.{framework,xcframework}'
   
 end

@@ -7,11 +7,51 @@
 
 #import "LicensePlateRecognitionWrapper.h"
 
+#ifdef __OBJC__
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#endif
+
+#ifdef __cplusplus
+// 保存并取消 NO 宏定义，避免与 OpenCV 枚举冲突
+#ifdef NO
+#define OPENCV_NO_WAS_DEFINED
+#undef NO
+#endif
+
+#import <opencv2/opencv.hpp>
+#import <opencv2/imgcodecs/ios.h>
+
+// 恢复 NO 宏定义（如果需要）
+#ifdef OPENCV_NO_WAS_DEFINED
+#define NO ((BOOL)0)
+#undef OPENCV_NO_WAS_DEFINED
+#endif
+#endif
+
+#ifdef __OBJC__
+#import <hyperlpr3/hyper_lpr_sdk.h>
+#endif
+
 cv::Mat UIImageToMat(UIImage *image) {
+    if (!image) {
+        return cv::Mat();
+    }
+    
     CGImageRef cgImage = [image CGImage];
+    if (!cgImage) {
+        return cv::Mat();
+    }
     
     CGDataProviderRef dataProvider = CGImageGetDataProvider(cgImage);
+    if (!dataProvider) {
+        return cv::Mat();
+    }
+    
     CFDataRef data = CGDataProviderCopyData(dataProvider);
+    if (!data) {
+        return cv::Mat();
+    }
     
     const UInt8 *buffer = CFDataGetBytePtr(data);
     size_t width = CGImageGetWidth(cgImage);
@@ -87,9 +127,24 @@ return str2;
 
 - (void)processImage:(UIImage *)image
            completion:(void (^)(NSString *code, NSString *type, CGFloat text_confidence))completion {
+    if (!image) {
+        NSLog(@"Error: image is nil");
+        return;
+    }
+    
+    if (!ctx) {
+        NSLog(@"Error: context is nil");
+        return;
+    }
+    
     // Convert UIImage to cv::Mat
     cv::Mat cvImage = UIImageToMat(image);
     
+    // Check if conversion was successful
+    if (cvImage.empty()) {
+        NSLog(@"Error: Failed to convert UIImage to cv::Mat");
+        return;
+    }
     
     // Create ImageData
     HLPR_ImageData data = {0};
@@ -102,10 +157,16 @@ return str2;
     
     // Create DataBuffer
     P_HLPR_DataBuffer buffer = HLPR_CreateDataBuffer(&data);
+    if (!buffer) {
+        NSLog(@"Error: Failed to create data buffer");
+        return;
+    }
     
     // Perform license plate recognition
     HLPR_PlateResultList results;
     HLPR_ContextUpdateStream(ctx, buffer, &results);
+    
+    BOOL foundResult = NO;
     for (int i = 0; i < results.plate_size; ++i) {
         // Parse and print the recognition results
         NSString *type;
@@ -124,17 +185,22 @@ return str2;
         NSLog(@"<%d> %@, %s, %f", i + 1, type,
               results.plates[i].code, results.plates[i].text_confidence);
         if (results.plates[i].text_confidence > 0.95) {
-                    // If confidence is greater than 0.9, execute the completion block
-                    if (completion) {
-                        completion([NSString stringWithUTF8String:results.plates[i].code],
-                                   type,
-                                   results.plates[i].text_confidence);
-                    }
-                }
+            // If confidence is greater than 0.95, execute the completion block
+            foundResult = YES;
+            if (completion) {
+                completion([NSString stringWithUTF8String:results.plates[i].code],
+                           type,
+                           results.plates[i].text_confidence);
+            }
+            break; // 找到第一个高置信度结果后退出
+        }
     }
     
     // Release DataBuffer
     HLPR_ReleaseDataBuffer(buffer);
+    
+    // 如果没有找到结果，不调用 completion（让 Swift 端处理超时）
+    // 这样可以避免频繁调用 completion
 }
 
 - (void)dealloc {
