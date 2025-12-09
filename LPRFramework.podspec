@@ -18,7 +18,8 @@ TODO: Add long description of the pod here.
   s.static_framework = true
   
   s.pod_target_xcconfig = {
-    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++14',
+    'OTHER_LDFLAGS' => '-all_load -lc++',
+    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
     'CLANG_CXX_LIBRARY' => 'libc++'
   }
 
