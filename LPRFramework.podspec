@@ -27,6 +27,7 @@ TODO: Add long description of the pod here.
   s.resources = 'Sources/Assets/*'
   s.frameworks = 'CoreML'
   s.libraries = 'c++'
+  s.dependency "OpenCV-v-4.6.0", "~> 4.6.0"
   s.vendored_frameworks = 'Frameworks/*.{framework,xcframework}'
   
 end
